@@ -123,7 +123,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             .build()
 
         val service = retrofit.create(ParkingService::class.java)
-        val serviceKey = "8824odpI8YXZwBs0aCMGxGbMJ2Agw9LH7BetjkFXKjn8/V0pk+L5fsRLXKvlZGpFCEk/31cM+b5Bcg+9DAdEvA=="
+        val serviceKey = "odpI8YXZwBs0aCMGxGbMJ2Agw9LH7BetjkFXKjn8/V0pk+L5fsRLXKvlZGpFCEk/31cM+b5Bcg+9DAdEvA=="
 
         // API 호출을 위한 OkHttpClient 설정 (타임아웃 증가)
         val client = OkHttpClient.Builder()

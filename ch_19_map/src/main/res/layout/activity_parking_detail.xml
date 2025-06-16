@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/detail_main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        tools:context=".ParkingDetailActivity">
+
+        <TextView
+            android:id="@+id/detail_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp"
+            android:text="주차장 이름"/>
+
+        <TextView
+            android:id="@+id/detail_address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"
+            android:text="주소"/>
+
+        <TextView
+            android:id="@+id/detail_total_spaces"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="전체 주차 대수"/>
+
+        <TextView
+            android:id="@+id/detail_available_spaces"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="현재 주차 가능 대수"/>
+
+        <TextView
+            android:id="@+id/detail_latitude"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="위도"/>
+
+        <TextView
+            android:id="@+id/detail_longitude"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="경도"/>
+
+        <TextView
+            android:id="@+id/detail_center_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="센터 ID"/>
+
+        <!-- 요금 정보 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:text="요금 정보"/>
+
+        <TextView
+            android:id="@+id/detail_basic_free_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="기본 무료 시간: "/>
+
+        <TextView
+            android:id="@+id/detail_basic_charge_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="기본 요금 시간: "/>
+
+        <TextView
+            android:id="@+id/detail_basic_charge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="기본 요금: "/>
+
+        <TextView
+            android:id="@+id/detail_additional_unit_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="추가 단위 시간: "/>
+
+        <TextView
+            android:id="@+id/detail_additional_unit_charge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="추가 단위 요금: "/>
+
+        <TextView
+            android:id="@+id/detail_one_day_charge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="1일 요금: "/>
+
+        <TextView
+            android:id="@+id/detail_monthly_charge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="월 정액 요금: "/>
+
+        <!-- 운영 시간 정보 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:text="운영 시간 정보"/>
+
+        <TextView
+            android:id="@+id/detail_sunday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="일요일: "/>
+
+        <TextView
+            android:id="@+id/detail_monday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="월요일: "/>
+
+        <TextView
+            android:id="@+id/detail_tuesday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="화요일: "/>
+
+        <TextView
+            android:id="@+id/detail_wednesday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="수요일: "/>
+
+        <TextView
+            android:id="@+id/detail_thursday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="목요일: "/>
+
+        <TextView
+            android:id="@+id/detail_friday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="금요일: "/>
+
+        <TextView
+            android:id="@+id/detail_saturday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="4dp"
+            android:text="토요일: "/>
+
+        <TextView
+            android:id="@+id/detail_holiday_oper_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"
+            android:text="공휴일: "/>
+
+    </LinearLayout>
+</ScrollView> 

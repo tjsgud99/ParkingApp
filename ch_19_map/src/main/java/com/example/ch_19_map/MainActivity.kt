@@ -254,6 +254,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             searchEditText.clearFocus()
             updateFullTabUI()
         }
+
+        // 사이드 메뉴 하단 로그인 버튼 클릭 시 로그인 화면으로 이동
+        findViewById<Button>(R.id.btnLogin).setOnClickListener {
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun initializeViews() {

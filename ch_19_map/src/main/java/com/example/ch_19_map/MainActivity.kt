@@ -89,6 +89,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private val KEY_RECENT = "recent_history"
     private val KEY_FAVORITE = "favorite_history"
 
+    private lateinit var fullAdapter: SearchHistoryAdapter
+    private var isFavoriteTab = false
+
+    // UI 관련 변수들
+    private lateinit var searchFullLayout: FrameLayout
+    private lateinit var btnCloseSearch: ImageButton
+    private lateinit var searchCardView: View
+    private lateinit var btnPQ: ImageButton
+    private lateinit var pqText: View
+    private lateinit var fullSearchEditText: EditText
+    private lateinit var fullSearchButton: ImageButton
+    private lateinit var fullTabRecent: TextView
+    private lateinit var fullTabFavorite: TextView
+    private lateinit var fullHistoryRecyclerView: RecyclerView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -149,51 +164,53 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         setupSearchResultRecyclerView()
         setupSearchListeners()
 
-        // 전체 검색 레이아웃 관련 뷰
-        val searchFullLayout = findViewById<FrameLayout>(R.id.searchFullLayout)
-        val btnCloseSearch = findViewById<ImageButton>(R.id.btnCloseSearch)
-        val searchCardView = findViewById<View>(R.id.searchCardView)
-        val btnPQ = findViewById<ImageButton>(R.id.btnPQ)
-        val pqText = findViewById<View>(R.id.pqText)
+        // 전체 검색 레이아웃 관련 뷰 초기화
+        searchFullLayout = findViewById(R.id.searchFullLayout)
+        btnCloseSearch = findViewById(R.id.btnCloseSearch)
+        searchCardView = findViewById(R.id.searchCardView)
+        btnPQ = findViewById(R.id.btnPQ)
+        pqText = findViewById(R.id.pqText)
+        fullSearchEditText = findViewById(R.id.fullSearchEditText)
+        fullSearchButton = findViewById(R.id.fullSearchButton)
+        fullTabRecent = findViewById(R.id.fullTabRecent)
+        fullTabFavorite = findViewById(R.id.fullTabFavorite)
+        fullHistoryRecyclerView = findViewById(R.id.fullHistoryRecyclerView)
 
-        // 검색창 클릭 시 전체 검색 레이아웃 표시, 기존 UI 숨김
-        val searchEditText = findViewById<EditText>(R.id.searchEditText)
-        searchEditText.setOnClickListener {
-            searchFullLayout.visibility = View.VISIBLE
-            searchCardView.visibility = View.GONE
-            btnPQ.visibility = View.GONE
-            pqText.visibility = View.GONE
-        }
-        // 닫기 버튼 클릭 시 기존 UI 복귀
-        btnCloseSearch.setOnClickListener {
-            searchFullLayout.visibility = View.GONE
-            searchCardView.visibility = View.VISIBLE
-            btnPQ.visibility = View.VISIBLE
-            pqText.visibility = View.VISIBLE
-        }
-
-        // 전체 검색 레이아웃 내 탭/리스트 연동
-        val fullTabRecent = findViewById<TextView>(R.id.fullTabRecent)
-        val fullTabFavorite = findViewById<TextView>(R.id.fullTabFavorite)
-        val fullHistoryRecyclerView = findViewById<RecyclerView>(R.id.fullHistoryRecyclerView)
-        var isFavoriteTab = false
-        lateinit var fullAdapter: SearchHistoryAdapter
-        fullAdapter = SearchHistoryAdapter(loadHistory(false),
+        // 어댑터 초기화
+        fullAdapter = SearchHistoryAdapter(
+            loadHistory(false),
             onDeleteClick = { item ->
-                val list = loadHistory(isFavoriteTab).toMutableList().apply { removeAll { it.keyword == item.keyword } }
+                Log.d("SearchHistory", "Deleting item: ${item.keyword}")
+                val list = loadHistory(isFavoriteTab).toMutableList().apply { 
+                    removeAll { it.keyword == item.keyword } 
+                }
                 saveHistory(list, isFavoriteTab)
                 fullAdapter.updateList(list)
             },
             onItemClick = { item ->
-                findViewById<EditText>(R.id.fullSearchEditText).setText(item.keyword)
+                Log.d("SearchHistory", "Item clicked: ${item.keyword}")
+                fullSearchEditText.setText(item.keyword)
             }
         )
         fullHistoryRecyclerView.adapter = fullAdapter
-        fun updateFullTabUI() {
-            fullTabRecent.setBackgroundColor(if (!isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
-            fullTabFavorite.setBackgroundColor(if (isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
-            fullAdapter.updateList(loadHistory(isFavoriteTab))
+        fullHistoryRecyclerView.layoutManager = LinearLayoutManager(this)
+
+        // 검색 버튼 클릭 리스너
+        fullSearchButton.setOnClickListener {
+            doFullSearch()
         }
+
+        // 엔터 검색
+        fullSearchEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                doFullSearch()
+                true
+            } else {
+                false
+            }
+        }
+
+        // 탭 클릭 리스너
         fullTabRecent.setOnClickListener {
             isFavoriteTab = false
             updateFullTabUI()
@@ -202,6 +219,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             isFavoriteTab = true
             updateFullTabUI()
         }
+
+        // 닫기 버튼 클릭 리스너
+        btnCloseSearch.setOnClickListener {
+            searchFullLayout.visibility = View.GONE
+            searchCardView.visibility = View.VISIBLE
+            btnPQ.visibility = View.VISIBLE
+            pqText.visibility = View.VISIBLE
+            fullSearchEditText.visibility = View.VISIBLE
+        }
+
+        // 초기 UI 상태 설정
         updateFullTabUI()
 
         // PQ 버튼 클릭 시 사이드 메뉴와 오버레이 표시 (ImageButton 타입 명확히)
@@ -214,6 +242,17 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         sideMenuOverlay.setOnClickListener {
             sideMenuLayout.visibility = View.GONE
             sideMenuOverlay.visibility = View.GONE
+        }
+
+        // 검색창 클릭 시 전체 검색 레이아웃 표시, 기존 UI 숨김
+        searchEditText = findViewById(R.id.searchEditText)
+        searchEditText.setOnClickListener {
+            searchFullLayout.visibility = View.VISIBLE
+            searchCardView.visibility = View.GONE
+            btnPQ.visibility = View.GONE
+            pqText.visibility = View.GONE
+            searchEditText.clearFocus()
+            updateFullTabUI()
         }
     }
 
@@ -729,9 +768,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val key = if (isFavorite) KEY_FAVORITE else KEY_RECENT
         val set = prefs.getStringSet(key, emptySet()) ?: emptySet()
+        Log.d("SearchHistory", "Loading history for key: $key, size: ${set.size}")
         return set.mapNotNull {
-            val parts = it.split("||")
-            if (parts.size >= 2) SearchHistoryItem(parts[0], parts[1], isFavorite) else null
+            try {
+                val parts = it.split("||")
+                if (parts.size >= 2) {
+                    Log.d("SearchHistory", "Parsed item: keyword=${parts[0]}, date=${parts[1]}")
+                    SearchHistoryItem(parts[0], parts[1], isFavorite)
+                } else {
+                    Log.e("SearchHistory", "Invalid item format: $it")
+                    null
+                }
+            } catch (e: Exception) {
+                Log.e("SearchHistory", "Error parsing item: $it", e)
+                null
+            }
         }.sortedByDescending { it.date }
     }
 
@@ -739,18 +790,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private fun saveHistory(list: List<SearchHistoryItem>, isFavorite: Boolean) {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         val key = if (isFavorite) KEY_FAVORITE else KEY_RECENT
-        val set = list.map { "${'$'}{it.keyword}||${'$'}{it.date}" }.toSet()
+        val set = list.map { "${it.keyword}||${it.date}" }.toSet()
+        Log.d("SearchHistory", "Saving history for key: $key, size: ${set.size}")
         prefs.edit().putStringSet(key, set).apply()
     }
 
     // 최근검색 추가
     private fun addRecentHistory(keyword: String) {
+        Log.d("SearchHistory", "Adding recent history: $keyword")
         val date = SimpleDateFormat("MM.dd", Locale.getDefault()).format(Date())
         val list = loadHistory(false).toMutableList()
         list.removeAll { it.keyword == keyword }
         list.add(0, SearchHistoryItem(keyword, date, false))
         if (list.size > 20) list.removeLast() // 최대 20개
         saveHistory(list, false)
+        Log.d("SearchHistory", "Current recent history size: ${list.size}")
     }
 
     // 즐겨찾기 추가/삭제
@@ -762,5 +816,43 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             favList.add(0, item.copy(isFavorite = true))
         }
         saveHistory(favList, true)
+        updateFullTabUI() // 즐겨찾기 변경 후 UI 갱신 추가
+    }
+
+    // UI 갱신 함수
+    private fun updateFullTabUI() {
+        Log.d("SearchHistory", "Updating UI, isFavoriteTab: $isFavoriteTab")
+        fullTabRecent.setBackgroundColor(if (!isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
+        fullTabFavorite.setBackgroundColor(if (isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
+        val currentList = loadHistory(isFavoriteTab)
+        Log.d("SearchHistory", "Current list size: ${currentList.size}")
+        fullAdapter.updateList(currentList)
+    }
+
+    private fun doFullSearch() {
+        val searchQuery = fullSearchEditText.text.toString().trim()
+        if (searchQuery.isEmpty()) return
+        Log.d("SearchHistory", "Performing search: $searchQuery")
+        addRecentHistory(searchQuery)
+        updateFullTabUI()
+        // 지도 이동
+        try {
+            val addresses = geocoder.getFromLocationName(searchQuery, 1)
+            if (!addresses.isNullOrEmpty()) {
+                val address = addresses[0]
+                val location = LatLng(address.latitude, address.longitude)
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15f))
+            } else {
+                Toast.makeText(this, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Toast.makeText(this, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+        }
+        // 검색창 닫기 및 기존 UI 복귀
+        searchFullLayout.visibility = View.GONE
+        searchCardView.visibility = View.VISIBLE
+        btnPQ.visibility = View.VISIBLE
+        pqText.visibility = View.VISIBLE
     }
 }

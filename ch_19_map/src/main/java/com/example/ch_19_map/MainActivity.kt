@@ -55,6 +55,9 @@ import androidx.core.view.WindowInsetsCompat
 import com.example.ch_19_map.ParkingOperResponse
 import com.example.ch_19_map.ParkingOperItem
 import android.location.Geocoder
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.widget.LinearLayout
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
 
@@ -410,9 +413,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                             Log.d("PARKING_DETAIL_VALUES", "  Saturday Oper Time: ${saturdayOperTime}")
                             Log.d("PARKING_DETAIL_VALUES", "  Holiday Oper Time: ${holidayOperTime}")
 
+                            // 자리수 정보 파싱
+                            val total = totalLotsText.filter { it.isDigit() }.toIntOrNull() ?: 0
+                            val available = availableLotsText.filter { it.isDigit() }.toIntOrNull() ?: 0
+                            val percent = if (total > 0) (available * 100) / total else 0
+
+                            val (colorResId, status) = when {
+                                percent <= 33 -> Pair(R.drawable.marker_bg_round, "혼잡") // 빨간색
+                                percent <= 66 -> Pair(R.drawable.marker_bg_yellow, "보통") // 노란색
+                                else -> Pair(R.drawable.marker_bg_green, "여유") // 초록색
+                            }
+
+                            val markerBitmap = createParkingMarkerBitmap(status, colorResId)
                             val marker = MarkerOptions()
                                 .position(position)
-                                .title(item.prk_plce_nm)
+                                .icon(BitmapDescriptorFactory.fromBitmap(markerBitmap))
                             val markerObj = googleMap?.addMarker(marker)
 
                             markerObj?.let {
@@ -613,5 +628,19 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             Toast.makeText(this, "카카오내비 앱이 설치되어 있지 않습니다. 플레이 스토어로 이동합니다.", Toast.LENGTH_SHORT).show()
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.locnall.KakaoNavi")))
         }
+    }
+
+    // 커스텀 마커 뷰를 비트맵으로 변환하는 함수
+    private fun createParkingMarkerBitmap(status: String, colorResId: Int): Bitmap {
+        val markerView = LayoutInflater.from(this).inflate(R.layout.marker_parking, null) as LinearLayout
+        val tvStatus = markerView.findViewById<TextView>(R.id.tvStatus)
+        tvStatus.text = status
+        markerView.background = ContextCompat.getDrawable(this, colorResId)
+        markerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        markerView.layout(0, 0, markerView.measuredWidth, markerView.measuredHeight)
+        val bitmap = Bitmap.createBitmap(markerView.measuredWidth, markerView.measuredHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        markerView.draw(canvas)
+        return bitmap
     }
 }

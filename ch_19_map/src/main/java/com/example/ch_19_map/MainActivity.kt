@@ -36,7 +36,14 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.widget.Button
-
+import java.util.Locale
+import java.io.IOException
+import android.widget.EditText
+import android.widget.ImageButton
+import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.LinearLayoutManager
+import android.view.inputmethod.EditorInfo
+import androidx.recyclerview.widget.RecyclerView
 
 import androidx.activity.enableEdgeToEdge
 
@@ -47,6 +54,7 @@ import androidx.core.view.WindowInsetsCompat
 
 import com.example.ch_19_map.ParkingOperResponse
 import com.example.ch_19_map.ParkingOperItem
+import android.location.Geocoder
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
 
@@ -58,6 +66,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private val operInfoMap = mutableMapOf<String, ParkingOperItem>()
     private val allOperItems = mutableListOf<ParkingOperItem>()
     private val allRealtimeItems = mutableListOf<ParkingStatusItem>()
+    private lateinit var mMap: GoogleMap
+    private lateinit var searchEditText: EditText
+    private lateinit var searchButton: ImageButton
+    private lateinit var searchResultCardView: CardView
+    private lateinit var searchResultRecyclerView: RecyclerView
+    private lateinit var searchResultAdapter: SearchResultAdapter
+    private lateinit var geocoder: Geocoder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,6 +125,84 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         } else {
             apiClient.connect()
         }
+
+        // Geocoder 초기화
+        geocoder = Geocoder(this, Locale.KOREA)
+
+        // UI 요소 초기화
+        initializeViews()
+        setupSearchResultRecyclerView()
+        setupSearchListeners()
+    }
+
+    private fun initializeViews() {
+        searchEditText = findViewById(R.id.searchEditText)
+        searchButton = findViewById(R.id.searchButton)
+        searchResultCardView = findViewById(R.id.searchResultCardView)
+        searchResultRecyclerView = findViewById(R.id.searchResultRecyclerView)
+    }
+
+    private fun setupSearchResultRecyclerView() {
+        searchResultAdapter = SearchResultAdapter { searchResult ->
+            // 검색 결과 클릭 시 처리
+            moveMapToLocation(searchResult)
+            searchResultCardView.visibility = View.GONE
+        }
+
+        searchResultRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = searchResultAdapter
+        }
+    }
+
+    private fun setupSearchListeners() {
+        // 검색 버튼 클릭 리스너
+        searchButton.setOnClickListener {
+            performSearch()
+        }
+
+        // 키보드 검색 버튼 리스너
+        searchEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                performSearch()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun performSearch() {
+        val searchQuery = searchEditText.text.toString().trim()
+        if (searchQuery.isEmpty()) return
+
+        try {
+            val addresses = geocoder.getFromLocationName(searchQuery, 5)
+            if (!addresses.isNullOrEmpty()) {
+                val searchResults = addresses.map { address ->
+                    SearchResult(
+                        placeName = address.featureName ?: searchQuery,
+                        address = address.getAddressLine(0) ?: "",
+                        latitude = address.latitude,
+                        longitude = address.longitude
+                    )
+                }
+                searchResultAdapter.updateResults(searchResults)
+                searchResultCardView.visibility = View.VISIBLE
+            } else {
+                Toast.makeText(this, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Toast.makeText(this, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun moveMapToLocation(searchResult: SearchResult) {
+        val location = LatLng(searchResult.latitude, searchResult.longitude)
+        mMap.clear() // 기존 마커 제거
+        mMap.addMarker(MarkerOptions().position(location).title(searchResult.address))
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(location, 15f))
     }
 
     private fun moveMap(latitude: Double, longitude: Double) {
@@ -118,12 +211,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             .target(latlng)
             .zoom(16f)
             .build()
-        googleMap!!.moveCamera(CameraUpdateFactory.newCameraPosition(position))
-        val markerOption = MarkerOptions()
-        markerOption.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-        markerOption.position(latlng)
-        markerOption.title("MyLocation")
-        googleMap?.addMarker(markerOption)
+        if (googleMap != null) {
+            googleMap!!.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+            val markerOption = MarkerOptions()
+            markerOption.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+            markerOption.position(latlng)
+            markerOption.title("MyLocation")
+            googleMap?.addMarker(markerOption)
+        } else {
+            Log.e("MainActivity", "구글맵 객체가 초기화되지 않았습니다.")
+        }
     }
 
     private fun fetchAndShowParkingMarkers() {
@@ -424,8 +521,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         return null
     }
 
-    override fun onMapReady(map: GoogleMap) {
-        googleMap = map
+    override fun onMapReady(googleMap: GoogleMap) {
+        mMap = googleMap
+        this.googleMap = googleMap
         googleMap?.setInfoWindowAdapter(this)
 
         googleMap?.setOnMarkerClickListener { marker ->
@@ -442,7 +540,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             }
         }
 
-        moveMap(37.5665, 126.9780)
+        // 앱 시작 시 서울 좌표로 카메라 이동
+        val seoul = LatLng(37.5665, 126.9780)
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(seoul, 15f))
 
         fetchAndShowParkingMarkers()
     }

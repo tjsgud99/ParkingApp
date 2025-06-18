@@ -56,15 +56,15 @@ class ParkingDetailActivity : AppCompatActivity() {
 
             // 내비게이션 버튼 설정
             findViewById<Button>(R.id.btnNaverMap).setOnClickListener {
-                openNaverMap(latitude, longitude, detail.name)
+                openNaverMap(latitude, longitude, detail.address)
             }
 
             findViewById<Button>(R.id.btnKakaoNavi).setOnClickListener {
-                openKakaoNavi(latitude, longitude, detail.name)
+                openKakaoNavi(latitude, longitude, detail.address)
             }
 
             findViewById<Button>(R.id.btnTmap).setOnClickListener {
-                openTmap(latitude, longitude, detail.name)
+                openTmap(latitude, longitude, detail.address)
             }
         }
     }

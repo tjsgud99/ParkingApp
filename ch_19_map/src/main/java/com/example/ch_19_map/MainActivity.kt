@@ -603,31 +603,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val title = infoWindow.findViewById<TextView>(R.id.title)
         val totalSpaces = infoWindow.findViewById<TextView>(R.id.total_spaces)
         val availableSpaces = infoWindow.findViewById<TextView>(R.id.available_spaces)
-        val detailButton = infoWindow.findViewById<Button>(R.id.detailButton)
-        val navigationButton = infoWindow.findViewById<Button>(R.id.navigationButton)
+        val actionButton = infoWindow.findViewById<LinearLayout>(R.id.actionButton)
 
         val parkingDetail = parkingDataMap[marker.id]
-
-        title.text = marker.title
+        title.text = marker.title ?: parkingDetail?.name ?: ""
         totalSpaces.text = parkingDetail?.totalSpaces ?: ""
         availableSpaces.text = parkingDetail?.availableSpaces ?: ""
 
-        navigationButton.setOnClickListener {
+        actionButton.setOnClickListener {
             if (parkingDetail != null) {
-                showNavigationAppSelectionDialog(parkingDetail.latitude, parkingDetail.longitude, parkingDetail.name)
-            } else {
-                Toast.makeText(this, "주차장 정보가 없습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        detailButton.setOnClickListener {
-            if (parkingDetail != null) {
-                val intent = android.content.Intent(this, ParkingDetailActivity::class.java)
-                intent.putExtra("parkingDetail", parkingDetail)
+                val intent = Intent(this, ParkingDetailActivity::class.java)
+                intent.putExtra("parking_detail_key", parkingDetail)
+                intent.putExtra("latitude", marker.position.latitude)
+                intent.putExtra("longitude", marker.position.longitude)
                 startActivity(intent)
             }
         }
-
         return infoWindow
     }
 
@@ -639,16 +630,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             view.findViewById<TextView>(R.id.total_spaces).text = "전체 주차 대수: ${parkingDetail.totalSpaces}"
             view.findViewById<TextView>(R.id.available_spaces).text = "현재 주차 가능 대수: ${parkingDetail.availableSpaces}"
 
-            view.findViewById<Button>(R.id.navigationButton).setOnClickListener {
-                val intent = Intent(this, ParkingDetailActivity::class.java).apply {
-                    putExtra("parking_detail_key", parkingDetail)
-                    putExtra("latitude", marker.position.latitude)
-                    putExtra("longitude", marker.position.longitude)
-                }
-                startActivity(intent)
-            }
-
-            view.findViewById<Button>(R.id.detailButton).setOnClickListener {
+            view.findViewById<LinearLayout>(R.id.actionButton).setOnClickListener {
                 val intent = Intent(this, ParkingDetailActivity::class.java).apply {
                     putExtra("parking_detail_key", parkingDetail)
                     putExtra("latitude", marker.position.latitude)

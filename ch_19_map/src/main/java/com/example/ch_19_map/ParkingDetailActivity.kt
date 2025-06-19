@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -55,15 +56,15 @@ class ParkingDetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.detail_holiday_oper_time).text = "공휴일: ${detail.holidayOperTime}"
 
             // 내비게이션 버튼 설정
-            findViewById<Button>(R.id.btnNaverMap).setOnClickListener {
+            findViewById<LinearLayout>(R.id.btnNaverMap).setOnClickListener {
                 openNaverMap(latitude, longitude, detail.address)
             }
 
-            findViewById<Button>(R.id.btnKakaoNavi).setOnClickListener {
+            findViewById<LinearLayout>(R.id.btnKakaoNavi).setOnClickListener {
                 openKakaoNavi(latitude, longitude, detail.address)
             }
 
-            findViewById<Button>(R.id.btnTmap).setOnClickListener {
+            findViewById<LinearLayout>(R.id.btnTmap).setOnClickListener {
                 openTmap(latitude, longitude, detail.address)
             }
         }

@@ -35,30 +35,85 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            android:gravity="center">
 
-            <Button
+            <LinearLayout
                 android:id="@+id/btnNaverMap"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="네이버 지도"
-                android:layout_marginEnd="4dp"/>
+                android:background="@drawable/naver_button_background"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_marginEnd="4dp"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/naver_icon"
+                    android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="네이버 지도"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
 
-            <Button
+            <LinearLayout
                 android:id="@+id/btnKakaoNavi"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="카카오내비"
-                android:layout_marginEnd="4dp"/>
+                android:background="@drawable/kakao_button_background"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_marginEnd="4dp"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/kakao_icon"
+                    android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="카카오내비"
+                    android:textColor="#191600"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
 
-            <Button
+            <LinearLayout
                 android:id="@+id/btnTmap"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="티맵"/>
+                android:background="@drawable/tmap_button_background"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/tmap_icon"
+                    android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="티맵"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"/>
+            </LinearLayout>
         </LinearLayout>
 
         <TextView

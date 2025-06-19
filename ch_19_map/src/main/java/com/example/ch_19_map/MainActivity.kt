@@ -236,6 +236,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val sideMenuLayout = findViewById<LinearLayout>(R.id.sideMenuLayout)
         val sideMenuOverlay = findViewById<View>(R.id.sideMenuOverlay)
         btnPQ.setOnClickListener {
+            updateSideMenuUserInfo()
             sideMenuLayout.visibility = View.VISIBLE
             sideMenuOverlay.visibility = View.VISIBLE
         }
@@ -257,9 +258,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         // 사이드 메뉴 하단 로그인 버튼 클릭 시 로그인 화면으로 이동
         findViewById<Button>(R.id.btnLogin).setOnClickListener {
-            val intent = Intent(this, LoginActivity::class.java)
-            startActivity(intent)
+            if (isLoggedIn()) {
+                // 로그아웃
+                val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                prefs.edit().clear().apply()
+                updateSideMenuUserInfo()
+                updateLoginButtonUI()
+            } else {
+                // 로그인 화면으로 이동
+                val intent = Intent(this, LoginActivity::class.java)
+                startActivity(intent)
+            }
         }
+
+        // 백엔드 데이터 로드
+        loadBackendData()
     }
 
     private fun initializeViews() {
@@ -559,8 +572,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                                 parkingDataMap[it.id] = ParkingDetail(
                                     name = item.prk_plce_nm,
                                     address = item.prk_plce_adres,
-                                    totalSpaces = "전체 주차 대수: ${totalLotsText}대",
-                                    availableSpaces = "현재 주차 가능 대수: ${availableLotsText}대",
+                                    totalSpaces = totalLotsText,
+                                    availableSpaces = availableLotsText,
                                     latitude = lat,
                                     longitude = lng,
                                     centerId = item.prk_center_id ?: "정보 없음",
@@ -842,5 +855,194 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         searchCardView.visibility = View.VISIBLE
         btnPQ.visibility = View.VISIBLE
         pqText.visibility = View.VISIBLE
+    }
+
+    // ==================== 백엔드 API 연동 기능 ====================
+    
+    // 백엔드에서 주차장 데이터 가져오기
+    private fun fetchParkingLotsFromBackend() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = RetrofitClient.apiService.getAllParkingLots()
+                if (response.isSuccessful) {
+                    val parkingLots = response.body()
+                    parkingLots?.let { lots ->
+                        withContext(Dispatchers.Main) {
+                            displayBackendParkingLots(lots)
+                        }
+                    }
+                } else {
+                    Log.e("API", "주차장 데이터 가져오기 실패: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("API", "주차장 데이터 가져오기 오류", e)
+            }
+        }
+    }
+    
+    // 백엔드 주차장 데이터를 지도에 표시
+    private fun displayBackendParkingLots(parkingLots: List<ParkingLotResponse>) {
+        parkingLots.forEach { parkingLot ->
+            // 주소를 좌표로 변환
+            try {
+                val addresses = geocoder.getFromLocationName(parkingLot.address, 1)
+                if (!addresses.isNullOrEmpty()) {
+                    val address = addresses[0]
+                    val location = LatLng(address.latitude, address.longitude)
+                    
+                    // 마커 생성
+                    val markerOptions = MarkerOptions()
+                        .position(location)
+                        .title(parkingLot.name)
+                        .snippet("${parkingLot.address}\n운영시간: ${parkingLot.runtime}\n요금: ${parkingLot.fee}원")
+                    
+                    val marker = mMap.addMarker(markerOptions)
+                    
+                    // 마커 정보 저장
+                    marker?.let { m ->
+                        val parkingDetail = ParkingDetail(
+                            name = parkingLot.name,
+                            address = parkingLot.address,
+                            totalSpaces = parkingLot.total_space.toString(),
+                            availableSpaces = "0", // 백엔드에서 제공하지 않으므로 기본값
+                            latitude = address.latitude,
+                            longitude = address.longitude,
+                            centerId = "", // 필요시 적절히 할당
+                        )
+                        parkingDataMap[m.id] = parkingDetail
+                    }
+                }
+            } catch (e: IOException) {
+                Log.e("Geocoding", "주소 변환 실패: ${parkingLot.address}", e)
+            }
+        }
+    }
+    
+    // 주차장 등록 (관리자용)
+    private fun registerParkingLotToBackend(parkingLot: ParkingLotRequest) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = RetrofitClient.apiService.registerParkingLot(parkingLot)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "주차장 등록 완료!", Toast.LENGTH_SHORT).show()
+                        // 등록 후 목록 새로고침
+                        fetchParkingLotsFromBackend()
+                    } else {
+                        Toast.makeText(this@MainActivity, "주차장 등록 실패: ${response.body()}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "주차장 등록 중 오류 발생", Toast.LENGTH_SHORT).show()
+                }
+                Log.e("API", "주차장 등록 오류", e)
+            }
+        }
+    }
+    
+    // 사용자 로그인
+    private fun loginUser(email: String, password: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = UserLoginRequest(email, password)
+                val response = RetrofitClient.apiService.loginUser(request)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
+                        // 로그인 성공 후 처리 (예: 사용자 정보 저장)
+                    } else {
+                        Toast.makeText(this@MainActivity, "로그인 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "로그인 중 오류 발생", Toast.LENGTH_SHORT).show()
+                }
+                Log.e("API", "로그인 오류", e)
+            }
+        }
+    }
+    
+    // 사용자 회원가입
+    private fun registerUser(username: String, email: String, password: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = UserRegisterRequest(username, email, password)
+                val response = RetrofitClient.apiService.registerUser(request)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        val userResponse = response.body()
+                        if (userResponse?.success == true) {
+                            Toast.makeText(this@MainActivity, "회원가입 성공!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, "회원가입 실패: ${userResponse?.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "회원가입 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "회원가입 중 오류 발생", Toast.LENGTH_SHORT).show()
+                }
+                Log.e("API", "회원가입 오류", e)
+            }
+        }
+    }
+    
+    // 즐겨찾기 추가
+    private fun addFavorite(userId: Long, parkingLotId: Long) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = FavoriteRequest(userId, parkingLotId)
+                val response = RetrofitClient.apiService.addFavorite(request)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "즐겨찾기 추가 완료!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "즐겨찾기 추가 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "즐겨찾기 추가 중 오류 발생", Toast.LENGTH_SHORT).show()
+                }
+                Log.e("API", "즐겨찾기 추가 오류", e)
+            }
+        }
+    }
+    
+    // 앱 시작 시 백엔드 데이터 로드
+    private fun loadBackendData() {
+        fetchParkingLotsFromBackend()
+    }
+
+    private fun updateSideMenuUserInfo() {
+        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        val username = prefs.getString("username", "로그인 해주세요")
+        val email = prefs.getString("email", "")
+        findViewById<TextView>(R.id.tvUserName).text = "$username 님"
+        findViewById<TextView>(R.id.tvUserEmail).text = email
+    }
+
+    private fun isLoggedIn(): Boolean {
+        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        return prefs.getString("username", null) != null
+    }
+
+    private fun updateLoginButtonUI() {
+        val btnLogin = findViewById<Button>(R.id.btnLogin)
+        if (isLoggedIn()) {
+            btnLogin.text = "로그아웃"
+        } else {
+            btnLogin.text = "로그인"
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateSideMenuUserInfo()
+        updateLoginButtonUI()
     }
 }

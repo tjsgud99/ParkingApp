@@ -5,6 +5,10 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SignUpActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,9 +55,30 @@ class SignUpActivity : AppCompatActivity() {
                     etPasswordConfirm.requestFocus()
                 }
                 else -> {
-                    // TODO: 회원가입 처리 로직 구현
-                    Toast.makeText(this, "회원가입이 완료되었습니다.", Toast.LENGTH_SHORT).show()
-                    finish()
+                    // 실제 회원가입 API 호출
+                    val request = UserRegisterRequest(
+                        username = name,
+                        email = email,
+                        password = password
+                    )
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val response = RetrofitClient.apiService.registerUser(request)
+                            withContext(Dispatchers.Main) {
+                                if (response.isSuccessful && response.body()?.success == true) {
+                                    Toast.makeText(this@SignUpActivity, "회원가입이 완료되었습니다.", Toast.LENGTH_SHORT).show()
+                                    finish()
+                                } else {
+                                    Toast.makeText(this@SignUpActivity, "회원가입 실패: ${response.body()?.message ?: "오류"}", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@SignUpActivity, "네트워크 오류: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 }
             }
         }

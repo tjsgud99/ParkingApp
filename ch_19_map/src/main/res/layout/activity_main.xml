@@ -199,6 +199,7 @@
 
         <!-- 상단 프로필 영역 -->
         <LinearLayout
+            android:id="@+id/llLoggedInUser"
             android:layout_width="match_parent"
             android:layout_height="140dp"
             android:orientation="vertical"
@@ -238,6 +239,7 @@
             android:paddingTop="16dp"
             android:paddingBottom="16dp">
             <TextView
+                android:id="@+id/tvMyInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="내정보"

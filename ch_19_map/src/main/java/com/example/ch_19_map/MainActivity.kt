@@ -271,6 +271,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             }
         }
 
+        // 사이드 메뉴 "내정보" 클릭 시 MyInfoActivity로 이동
+        findViewById<TextView>(R.id.tvMyInfo).setOnClickListener {
+            val intent = Intent(this, MyInfoActivity::class.java)
+            startActivity(intent)
+            // 사이드 메뉴 닫기
+            sideMenuLayout.visibility = View.GONE
+            sideMenuOverlay.visibility = View.GONE
+        }
+
         // 백엔드 데이터 로드
         loadBackendData()
     }

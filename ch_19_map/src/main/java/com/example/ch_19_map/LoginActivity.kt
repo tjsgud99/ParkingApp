@@ -2,6 +2,7 @@ package com.example.ch_19_map
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import android.widget.EditText
@@ -33,21 +34,25 @@ class LoginActivity : AppCompatActivity() {
                         if (response.isSuccessful) {
                             val loginResponse = response.body()
                             if (loginResponse != null) {
+                                Log.d("LoginActivity", "Login Response: username=${loginResponse.username}, email=${loginResponse.email}")
+
                                 val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
                                 prefs.edit()
                                     .putString("username", loginResponse.username)
                                     .putString("email", loginResponse.email)
+                                    .putString("password", password)
                                     .apply()
                                 finish()
                             } else {
-                                Toast.makeText(this@LoginActivity, "로그인 실패", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@LoginActivity, "로그인 실패: 응답 없음", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            Toast.makeText(this@LoginActivity, "로그인 실패", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@LoginActivity, "로그인 실패: ${response.errorBody()?.string()}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
+                        Log.e("LoginActivity", "Network Error", e)
                         Toast.makeText(this@LoginActivity, "네트워크 오류: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                     }
                 }

@@ -12,4 +12,8 @@
     <string name="korean">한국어</string>
     <string name="english">영어</string>
     <string name="current_language">현재 언어: %1$s</string>
+    <string name="delete">삭제</string>
+    <string name="default_notification1">앱이 최신 버전으로 업데이트 되었습니다.</string>
+    <string name="default_notification2">6월 10일(월) 서버 점검 예정입니다.</string>
+    <string name="default_notification3">새로운 기능이 추가되었습니다!</string>
 </resources>

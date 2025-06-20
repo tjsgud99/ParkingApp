@@ -36,7 +36,7 @@ public class UserController {
 	public ResponseEntity<UserResponseDto> register(@Valid @RequestBody UserRegisterDto dto) {
 		System.out.println("컨트롤러 진입");
 		String result = userService.register(dto);
-		return ResponseEntity.ok(new UserResponseDto(true, result));
+		return ResponseEntity.ok(new UserResponseDto(true, result, null, null, null));
 	}
 
 	@PostMapping("/login")

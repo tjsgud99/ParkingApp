@@ -32,7 +32,7 @@ public class User {
 	private String password;
 	
 	@Column
-	private LocalDateTime created_at = LocalDateTime.now();
+	private LocalDateTime createdAt = LocalDateTime.now();
 	
 	
 

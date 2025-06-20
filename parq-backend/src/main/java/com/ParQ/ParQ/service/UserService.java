@@ -44,6 +44,6 @@ public class UserService {
 			return null; // 비밀번호 불일치
 		}
 		// 로그인 성공 시 UserResponseDto 반환
-		return new UserResponseDto(user.getId(), user.getUsername(), user.getEmail());
+		return new UserResponseDto(true, "로그인 성공", user.getId(), user.getUsername(), user.getEmail());
 	}
 }

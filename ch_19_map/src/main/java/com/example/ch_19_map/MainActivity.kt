@@ -506,7 +506,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         CoroutineScope(Dispatchers.IO).launch {
             val allItems = mutableListOf<ParkingItem>()
-            val totalPages = 1
+            val totalPages = 2
 
             try {
                 // 주차장 시설 정보 가져오기
@@ -1017,11 +1017,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                         }
                     }
                 } else {
-                    Toast.makeText(applicationContext, "주차장 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(applicationContext, "주차장 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error loading parking lot data", e)
-                Toast.makeText(applicationContext, "네트워크 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(applicationContext, "네트워크 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -1171,6 +1175,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val email = prefs.getString("email", "")
         findViewById<TextView>(R.id.tvUserName).text = "$username 님"
         findViewById<TextView>(R.id.tvUserEmail).text = email
+        updateAdminUI() // 로그인 후에도 관리자 UI 즉시 반영
     }
 
     private fun isLoggedIn(): Boolean {
@@ -1279,6 +1284,40 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         if(::fullAdapter.isInitialized) {
              updateFullSearchUI()
         }
+        // 관리자 UI 적용 (로그인 후에도 즉시 반영)
+        updateAdminUI()
+    }
+
+    private fun updateAdminUI() {
+        val isAdmin = isAdmin()
+        val adminLabel = findViewById<TextView?>(R.id.tvAdminLabel)
+        val myInfo = findViewById<TextView>(R.id.tvMyInfo)
+        val favorites = findViewById<TextView>(R.id.tvFavorites)
+        val settings = findViewById<TextView>(R.id.tvSettings)
+        val currentLang = findViewById<TextView>(R.id.tvCurrentLanguage)
+        val cs = findViewById<TextView>(R.id.tvCs)
+        if (isAdmin) {
+            adminLabel?.visibility = View.VISIBLE
+            myInfo.visibility = View.GONE
+            favorites.visibility = View.GONE
+            settings.visibility = View.GONE
+            currentLang.visibility = View.GONE
+            cs.visibility = View.VISIBLE
+        } else {
+            adminLabel?.visibility = View.GONE
+            myInfo.visibility = View.VISIBLE
+            favorites.visibility = View.VISIBLE
+            settings.visibility = View.VISIBLE
+            currentLang.visibility = View.VISIBLE
+            cs.visibility = View.VISIBLE
+        }
+    }
+
+    private fun isAdmin(): Boolean {
+        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+        val email = prefs.getString("email", "")
+        // 관리자 이메일을 하드코딩하거나, 서버에서 권한 정보를 받아와도 됨
+        return email == "admin@parq.com" // 예시 관리자 계정
     }
 
     // onResume, handleLoginButtonClick 등에서 이 함수를 호출
@@ -1332,12 +1371,16 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     }
 
     override fun attachBaseContext(newBase: android.content.Context?) {
-        val prefs = newBase?.getSharedPreferences("settings", MODE_PRIVATE)
-        val lang = prefs?.getString("lang", null)
+        if (newBase == null) {
+            super.attachBaseContext(null)
+            return
+        }
+        val prefs = newBase.getSharedPreferences("settings", MODE_PRIVATE)
+        val lang = prefs.getString("lang", null)
         if (lang != null) {
             val locale = java.util.Locale(lang)
             java.util.Locale.setDefault(locale)
-            val config = newBase.resources.configuration
+            val config = android.content.res.Configuration(newBase.resources.configuration)
             config.setLocale(locale)
             val context = newBase.createConfigurationContext(config)
             super.attachBaseContext(context)

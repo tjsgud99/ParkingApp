@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class UserResponseDto {
-	private boolean success;
-	private String message;
-
+	private Long id;
+	private String username;
+	private String email;
 }

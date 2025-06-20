@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ParQ.ParQ.dto.ParkingLotRequestDto;
@@ -44,5 +45,10 @@ public class ParkingLotController {
 			@PathVariable String name) {
 		ParkingLot lot = parkingLotService.getParkingLotByName(name);
 		return ResponseEntity.ok(lot);
+	}
+
+	@GetMapping("/search")
+	public ResponseEntity<List<ParkingLot>> searchParkingLots(@RequestParam String keyword) {
+		return ResponseEntity.ok(parkingLotService.searchParkingLots(keyword));
 	}
 }

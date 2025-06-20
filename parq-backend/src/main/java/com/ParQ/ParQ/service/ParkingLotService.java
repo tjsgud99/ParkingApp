@@ -47,4 +47,8 @@ public class ParkingLotService {
 				.orElseThrow(()-> new IllegalArgumentException("해당 이름의 주차장이 존재하지 않습니다."));
 	}
 	
+	public List<ParkingLot> searchParkingLots(String keyword) {
+		return parkingLotRepository.findByNameContainingOrAddressContaining(keyword, keyword);
+	}
+	
 }

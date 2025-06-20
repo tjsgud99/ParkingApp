@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.ParQ.ParQ.dto.UserLoginDto;
 import com.ParQ.ParQ.dto.UserRegisterDto;
+import com.ParQ.ParQ.dto.UserResponseDto;
 import com.ParQ.ParQ.entity.User;
 import com.ParQ.ParQ.repository.UserRepository;
 
@@ -33,23 +34,16 @@ public class UserService {
 		return "회원가입 성공!";
 	}
 
-	public String login(UserLoginDto dto) {
-		Optional<User> useropt = userRepository.findByEmail(dto.getEmail());
-
-		if (useropt.isEmpty()) {
-			System.out.println("이메일 없음: " + dto.getEmail());
-			return "해당 이메일은 존재하지 않습니다.";
+	public UserResponseDto login(UserLoginDto dto) {
+		Optional<User> userOpt = userRepository.findByEmail(dto.getEmail());
+		if (userOpt.isEmpty()) {
+			return null; // 사용자가 없음
 		}
-		User user = useropt.get();
-
-		System.out.println("입력 비번: " + dto.getPassword());
-		System.out.println("DB 비번: " + user.getPassword());
-		System.out.println("matches: " + passwordEncoder.matches(dto.getPassword(), user.getPassword()));
-
+		User user = userOpt.get();
 		if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-			return "비밀번호가 일치하지 않습니다.";
+			return null; // 비밀번호 불일치
 		}
-
-		return "로그인 성공!";
+		// 로그인 성공 시 UserResponseDto 반환
+		return new UserResponseDto(user.getId(), user.getUsername(), user.getEmail());
 	}
 }

@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
 
 import com.ParQ.ParQ.dto.UserLoginDto;
 import com.ParQ.ParQ.dto.UserRegisterDto;
@@ -40,18 +41,11 @@ public class UserController {
 
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@RequestBody UserLoginDto dto) {
-		String result = userService.login(dto);
-		if (result.contains("로그인 성공")) {
-			User user = userRepository.findByEmail(dto.getEmail()).orElse(null);
-			if (user != null) {
-				Map<String, String> response = new HashMap<>();
-				response.put("username", user.getUsername());
-				response.put("email", user.getEmail());
-				return ResponseEntity.ok(response);
-			}
+		UserResponseDto userResponse = userService.login(dto);
+		if (userResponse != null) {
+			return ResponseEntity.ok(userResponse);
+		} else {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인 정보가 올바르지 않습니다.");
 		}
-		Map<String, String> fail = new HashMap<>();
-		fail.put("message", "로그인 실패");
-		return ResponseEntity.status(401).body(fail);
 	}
 }

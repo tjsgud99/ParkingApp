@@ -38,6 +38,7 @@ class LoginActivity : AppCompatActivity() {
 
                                 val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
                                 prefs.edit()
+                                    .putLong("user_id", loginResponse.id)
                                     .putString("username", loginResponse.username)
                                     .putString("email", loginResponse.email)
                                     .putString("password", password)

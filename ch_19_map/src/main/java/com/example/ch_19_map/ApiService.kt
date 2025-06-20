@@ -10,6 +10,9 @@ interface ApiService {
     @GET("api/parkinglots")
     suspend fun getAllParkingLots(): Response<List<ParkingLotResponse>>
     
+    @GET("api/parkinglots/search")
+    suspend fun searchParkingLots(@Query("keyword") keyword: String): Response<List<ParkingLotResponse>>
+    
     @GET("api/parkinglots/{name}")
     suspend fun getParkingLotByName(@Path("name") name: String): Response<ParkingLotResponse>
     
@@ -25,10 +28,13 @@ interface ApiService {
     
     // 즐겨찾기 관련 API
     @POST("api/favorites")
-    suspend fun addFavorite(@Body request: FavoriteRequest): Response<String>
+    suspend fun addFavorite(@Body favoriteRequest: FavoriteRequest): Response<String>
     
-    @DELETE("api/favorites/{id}")
-    suspend fun removeFavorite(@Path("id") id: Long): Response<String>
+    @HTTP(method = "DELETE", path = "api/favorites", hasBody = true)
+    suspend fun removeFavorite(@Body favoriteRequest: FavoriteRequest): Response<String>
+    
+    @GET("api/favorites/{userId}")
+    suspend fun getFavorites(@Path("userId") userId: Long): Response<List<Favorite>>
 }
 
 // 데이터 클래스들
@@ -38,7 +44,9 @@ data class ParkingLotResponse(
     val address: String,
     val runtime: String,
     val total_space: Int,
-    val fee: Int
+    val fee: Int,
+    var latitude: Double = 0.0,
+    var longitude: Double = 0.0
 )
 
 data class ParkingLotRequest(
@@ -65,12 +73,8 @@ data class UserResponse(
     val message: String
 )
 
-data class FavoriteRequest(
-    val userId: Long,
-    val parkingLotId: Long
-)
-
 data class LoginResponse(
+    val id: Long,
     val username: String,
     val email: String
 ) 

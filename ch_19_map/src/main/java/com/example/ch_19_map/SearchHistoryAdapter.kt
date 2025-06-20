@@ -8,16 +8,33 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class SearchHistoryAdapter(
-    private var items: List<SearchHistoryItem>,
-    private val onDeleteClick: (SearchHistoryItem) -> Unit = {},
-    private val onItemClick: (SearchHistoryItem) -> Unit = {}
+    private var historyList: List<SearchHistoryItem>,
+    private val favoriteKeywords: Set<String>,
+    private val onItemClick: (SearchHistoryItem) -> Unit,
+    private val onDeleteClick: (SearchHistoryItem) -> Unit,
+    private val onFavoriteClick: (SearchHistoryItem) -> Unit
 ) : RecyclerView.Adapter<SearchHistoryAdapter.ViewHolder>() {
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val keywordText: TextView = view.findViewById(R.id.tvKeyword)
-        val dateText: TextView = view.findViewById(R.id.tvDate)
-        val deleteBtn: ImageView = view.findViewById(R.id.btnDelete)
-        val icon: ImageView = view.findViewById(R.id.ivIcon)
+    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val keywordTextView: TextView = view.findViewById(R.id.tvKeyword)
+        private val dateTextView: TextView = view.findViewById(R.id.tvDate)
+        private val deleteButton: ImageView = view.findViewById(R.id.ivDelete)
+        private val favoriteButton: ImageView = view.findViewById(R.id.ivFavorite)
+
+        fun bind(item: SearchHistoryItem) {
+            keywordTextView.text = item.keyword
+            dateTextView.text = item.date
+            
+            if (favoriteKeywords.contains(item.keyword)) {
+                favoriteButton.setImageResource(R.drawable.ic_favorite)
+            } else {
+                favoriteButton.setImageResource(R.drawable.ic_favorite_border)
+            }
+
+            itemView.setOnClickListener { onItemClick(item) }
+            deleteButton.setOnClickListener { onDeleteClick(item) }
+            favoriteButton.setOnClickListener { onFavoriteClick(item) }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -27,18 +44,20 @@ class SearchHistoryAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = items[position]
-        holder.keywordText.text = item.keyword
-        holder.dateText.text = item.date
-        holder.icon.setImageResource(android.R.drawable.ic_menu_mylocation)
-        holder.deleteBtn.setOnClickListener { onDeleteClick(item) }
-        holder.itemView.setOnClickListener { onItemClick(item) }
+        holder.bind(historyList[position])
     }
 
-    override fun getItemCount() = items.size
+    override fun getItemCount() = historyList.size
 
     fun updateList(newItems: List<SearchHistoryItem>) {
-        items = newItems
+        historyList = newItems
+        notifyDataSetChanged()
+    }
+    
+    fun updateList(newItems: List<SearchHistoryItem>, newFavorites: Set<String>) {
+        historyList = newItems
+        (this.favoriteKeywords as MutableSet).clear()
+        (this.favoriteKeywords as MutableSet).addAll(newFavorites)
         notifyDataSetChanged()
     }
 } 

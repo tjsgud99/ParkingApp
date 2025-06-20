@@ -29,7 +29,7 @@ class LoginActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val request = UserLoginRequest(email, password)
-                    val response = RetrofitClient.apiService.loginUser(request)
+                    val response = RetrofitClient.getApiService(this@LoginActivity).loginUser(request)
                     withContext(Dispatchers.Main) {
                         if (response.isSuccessful) {
                             val loginResponse = response.body()

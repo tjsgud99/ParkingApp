@@ -1,3 +1,15 @@
 <resources>
-    <string name="app_name">ch_19_map</string>
+    <string name="app_name">내 앱</string>
+    <string name="menu_my_info">내정보</string>
+    <string name="menu_favorites">즐겨찾기</string>
+    <string name="menu_notification">알림</string>
+    <string name="menu_settings">설정</string>
+    <string name="menu_cs">고객센터</string>
+    <string name="logout">로그아웃</string>
+    <string name="login">로그인</string>
+    <string name="notification_title">공지사항 및 알림</string>
+    <string name="language_select">언어 선택 / Language Select</string>
+    <string name="korean">한국어</string>
+    <string name="english">영어</string>
+    <string name="current_language">현재 언어: %1$s</string>
 </resources>

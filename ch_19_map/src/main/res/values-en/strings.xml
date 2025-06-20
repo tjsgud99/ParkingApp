@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">My App</string>
+    <string name="menu_my_info">My Info</string>
+    <string name="menu_favorites">Favorites</string>
+    <string name="menu_notification">Notification</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_cs">Customer Service</string>
+    <string name="logout">Logout</string>
+    <string name="login">Login</string>
+    <string name="notification_title">Notifications &amp; Announcements</string>
+    <string name="language_select">Language Select / 언어 선택</string>
+    <string name="korean">Korean</string>
+    <string name="english">English</string>
+    <string name="current_language">Current language: %1$s</string>
+</resources> 

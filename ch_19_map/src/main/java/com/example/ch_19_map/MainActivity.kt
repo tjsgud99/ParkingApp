@@ -65,6 +65,17 @@ import android.content.SharedPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
 import android.widget.FrameLayout
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import android.view.inputmethod.InputMethodManager
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import android.widget.ImageView
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWindowAdapter {
 
@@ -106,6 +117,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private lateinit var fullHistoryRecyclerView: RecyclerView
     private lateinit var sideMenuLayout: LinearLayout
     private lateinit var sideMenuOverlay: View
+
+    private var parkingLotList: List<ParkingLotResponse> = emptyList()
+
+    // 지도 검색 결과 어댑터 및 뷰 변수 추가
+    private lateinit var searchPlaceResultCardView: androidx.cardview.widget.CardView
+    private lateinit var searchPlaceResultRecyclerView: androidx.recyclerview.widget.RecyclerView
+    private lateinit var searchPlaceResultAdapter: SearchResultAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -176,6 +194,49 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             fetchFavorites()
         }
         loadBackendData()
+
+        // 사이드 메뉴 '즐겨찾기' 클릭 시 FavoritesActivity로 이동
+        findViewById<TextView>(R.id.tvFavorites).setOnClickListener {
+            startActivity(Intent(this, FavoritesActivity::class.java))
+        }
+
+        // 지도 검색 결과 뷰 초기화
+        searchPlaceResultCardView = findViewById(R.id.searchPlaceResultCardView)
+        searchPlaceResultRecyclerView = findViewById(R.id.searchPlaceResultRecyclerView)
+        searchPlaceResultAdapter = SearchResultAdapter(emptyList()) { result ->
+            moveMap(result.latitude, result.longitude)
+            searchPlaceResultCardView.visibility = View.GONE
+        }
+        searchPlaceResultRecyclerView.adapter = searchPlaceResultAdapter
+        searchPlaceResultRecyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+
+        // 알림 메뉴 클릭 시 NotificationActivity로 이동
+        findViewById<LinearLayout>(R.id.layoutNotification).setOnClickListener {
+            val intent = Intent(this, NotificationActivity::class.java)
+            startActivity(intent)
+        }
+
+        // 현재 언어 표시
+        val lang = getSharedPreferences("settings", MODE_PRIVATE).getString("lang", "ko")
+        val langName = when(lang) {
+            "en" -> getString(R.string.english)
+            else -> getString(R.string.korean)
+        }
+        findViewById<TextView>(R.id.tvCurrentLanguage)?.text = getString(R.string.current_language, langName)
+
+        // 설정(언어 변경) 클릭 리스너
+        findViewById<TextView>(R.id.tvSettings).setOnClickListener {
+            val languages = arrayOf(getString(R.string.korean), getString(R.string.english))
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.language_select))
+                .setItems(languages) { _, which ->
+                    when (which) {
+                        0 -> setLocale("ko")
+                        1 -> setLocale("en")
+                    }
+                }
+                .show()
+        }
     }
 
     private fun initializeViews() {
@@ -240,6 +301,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         fullAdapter = SearchHistoryAdapter(
             historyList = loadHistory(isFavoriteTab),
             favoriteKeywords = favoriteKeywords,
+            isLoggedIn = isLoggedIn(),
             onItemClick = { item ->
                 Log.d("SearchHistory", "Item clicked: ${item.keyword}")
                 fullSearchEditText.setText(item.keyword)
@@ -250,26 +312,26 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                 val currentList = loadHistory(isFavoriteTab).toMutableList()
                 currentList.removeAll { it.keyword == item.keyword }
                 saveHistory(currentList, isFavoriteTab)
-                
-                // 만약 최근 검색 탭에서 즐겨찾기 항목을 삭제했다면, 즐겨찾기 목록에서도 지워야 함
                 if (!isFavoriteTab) {
                     val favoriteList = loadHistory(true).toMutableList()
                     favoriteList.removeAll { it.keyword == item.keyword }
                     saveHistory(favoriteList, true)
                 }
-                updateFullSearchUI() // 전체 UI 업데이트
+                updateFullSearchUI()
             },
             onFavoriteClick = { item ->
                 val favoriteList = loadHistory(true).toMutableList()
                 val isCurrentlyFavorite = favoriteList.any { it.keyword == item.keyword }
-
                 if (isCurrentlyFavorite) {
                     favoriteList.removeAll { it.keyword == item.keyword }
                 } else {
-                    favoriteList.add(0, item) // 최상단에 추가
+                    favoriteList.add(0, item)
                 }
                 saveHistory(favoriteList, true)
-                updateFullSearchUI() // 전체 UI 업데이트
+                updateFullSearchUI()
+            },
+            onLoginRequired = {
+                startActivity(Intent(this, LoginActivity::class.java))
             }
         )
         fullHistoryRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -283,7 +345,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         btnPQ.visibility = View.GONE
         pqText.visibility = View.GONE
         searchEditText.clearFocus()
-        updateFullTabUI()
+        updateFullSearchUI()
     }
     
     private fun closeSearchFullScreen() {
@@ -306,10 +368,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     
     private fun handleLoginButtonClick() {
         if (isLoggedIn()) {
-            val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-            prefs.edit().clear().apply()
+            getSharedPreferences("user_prefs", MODE_PRIVATE).edit().clear().apply()
+            favoriteParkingLotIds.clear()
             updateSideMenuUserInfo()
             updateLoginButtonUI()
+            updateFullSearchUI()
+            if(::mMap.isInitialized) addMarkersToMap(this.parkingLotList)
+            if (::parkingLotResultAdapter.isInitialized) parkingLotResultAdapter.updateFavorites(emptySet<Long>())
         } else {
             startActivity(Intent(this, LoginActivity::class.java))
         }
@@ -322,13 +387,13 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     
     private fun selectRecentTab() {
         isFavoriteTab = false
-        updateFullTabUI()
+        updateFullSearchUI()
     }
     
     private fun selectFavoriteTab() {
         if (isLoggedIn()) {
             isFavoriteTab = true
-            updateFullTabUI()
+            updateFullSearchUI()
         } else {
             Toast.makeText(this, "로그인이 필요한 기능입니다.", Toast.LENGTH_SHORT).show()
             startActivity(Intent(this, LoginActivity::class.java))
@@ -336,43 +401,64 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     }
 
     private fun executeSearch(searchQuery: String) {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) {
+        if (searchQuery.isBlank()) {
             Toast.makeText(this, "검색어를 입력해주세요.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        addRecentHistory(query)
-        searchFullLayout.visibility = View.GONE // 전체화면 닫기
-        
-        CoroutineScope(Dispatchers.Main).launch {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+        saveSearchQuery(searchQuery)
+        closeSearchFullScreen()
+        searchResultCardView.visibility = View.GONE
+
+        // ================== [지도 장소 검색: 여러 결과 리스트로 표시] ==================
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = RetrofitClient.apiService.searchParkingLots(query)
-                if (response.isSuccessful) {
-                    val parkingLots = response.body()
-                    if (parkingLots.isNullOrEmpty()) {
-                        Toast.makeText(this@MainActivity, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show()
-                        searchResultCardView.visibility = View.GONE
-                    } else {
-                        val resultsWithCoords = parkingLots.mapNotNull { lot ->
-                            try {
-                                val addresses = geocoder.getFromLocationName(lot.address, 1)
-                                if (addresses?.isNotEmpty() == true) {
-                                    lot.copy(latitude = addresses[0].latitude, longitude = addresses[0].longitude)
-                                } else { null }
-                            } catch (e: IOException) { null }
+                val addresses = geocoder.getFromLocationName(searchQuery, 10)
+                withContext(Dispatchers.Main) {
+                    if (addresses != null && addresses.isNotEmpty()) {
+                        val results = addresses.map {
+                            SearchResult(
+                                placeName = searchQuery,
+                                address = it.getAddressLine(0) ?: "",
+                                latitude = it.latitude,
+                                longitude = it.longitude
+                            )
                         }
-                        parkingLotResultAdapter.updateResults(resultsWithCoords)
-                        searchResultCardView.visibility = View.VISIBLE
+                        searchPlaceResultAdapter.updateResults(results)
+                        searchPlaceResultCardView.visibility = View.VISIBLE
+                    } else {
+                        searchPlaceResultAdapter.updateResults(emptyList())
+                        searchPlaceResultCardView.visibility = View.GONE
+                        Toast.makeText(this@MainActivity, "검색 결과가 없습니다.", Toast.LENGTH_SHORT).show()
                     }
-                } else {
-                    Toast.makeText(this@MainActivity, "검색 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("MainActivity", "Search failed", e)
-                Toast.makeText(this@MainActivity, "네트워크 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    searchPlaceResultAdapter.updateResults(emptyList())
+                    searchPlaceResultCardView.visibility = View.GONE
+                    Toast.makeText(this@MainActivity, "위치 검색 오류: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
+        // =============================================================
+    }
+
+    private fun saveSearchQuery(query: String) {
+        val history = loadHistory(isFavorite = false).toMutableList()
+        
+        // 중복 검색어 제거
+        history.removeAll { it.keyword == query }
+
+        // 새 검색어 추가 (최신 날짜로)
+        val currentDate = SimpleDateFormat("MM.dd", Locale.KOREA).format(Date())
+        history.add(0, SearchHistoryItem(query, currentDate, false))
+
+        // 목록 크기 제한 (예: 20개)
+        val trimmedHistory = if (history.size > 20) history.subList(0, 20) else history
+        
+        saveHistory(trimmedHistory, isFavorite = false)
     }
 
     private fun moveMap(latitude: Double, longitude: Double) {
@@ -420,7 +506,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         CoroutineScope(Dispatchers.IO).launch {
             val allItems = mutableListOf<ParkingItem>()
-            val totalPages = 2
+            val totalPages = 1
 
             try {
                 // 주차장 시설 정보 가져오기
@@ -783,8 +869,8 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
     // 커스텀 마커 뷰를 비트맵으로 변환하는 함수
     private fun createParkingMarkerBitmap(status: String, colorResId: Int): Bitmap {
-        val markerView = LayoutInflater.from(this).inflate(R.layout.marker_parking, null) as LinearLayout
-        val tvStatus = markerView.findViewById<TextView>(R.id.tvStatus)
+        val markerView = LayoutInflater.from(this).inflate(R.layout.marker_layout, null)
+        val tvStatus = markerView.findViewById<TextView>(R.id.marker_text)
         tvStatus.text = status
         markerView.background = ContextCompat.getDrawable(this, colorResId)
         markerView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
@@ -797,34 +883,46 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
     // 최근검색/즐겨찾기 불러오기
     private fun loadHistory(isFavorite: Boolean): List<SearchHistoryItem> {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val key = if (isFavorite) KEY_FAVORITE else KEY_RECENT
-        val set = prefs.getStringSet(key, emptySet()) ?: emptySet()
-        Log.d("SearchHistory", "Loading history for key: $key, size: ${set.size}")
-        return set.mapNotNull {
-            try {
-                val parts = it.split("||")
-                if (parts.size >= 2) {
-                    Log.d("SearchHistory", "Parsed item: keyword=${parts[0]}, date=${parts[1]}")
-                    SearchHistoryItem(parts[0], parts[1], isFavorite)
-                } else {
-                    Log.e("SearchHistory", "Invalid item format: $it")
-                    null
-                }
-            } catch (e: Exception) {
-                Log.e("SearchHistory", "Error parsing item: $it", e)
-                null
+        val prefs = getSharedPreferences("search_history", MODE_PRIVATE)
+        val gson = Gson()
+        
+        val key = if (isFavorite) {
+            val userId = getUserId()
+            if (userId != -1L) {
+                "favorite_history_$userId" // User-specific key
+            } else {
+                Log.w("History", "Cannot load favorites without a logged-in user.")
+                return emptyList() // Not logged in, return empty list for favorites
             }
-        }.sortedByDescending { it.date }
+        } else {
+            "recent_history"
+        }
+        
+        val json = prefs.getString(key, null)
+        val type = object : TypeToken<List<SearchHistoryItem>>() {}.type
+        return gson.fromJson(json, type) ?: emptyList()
     }
 
     // 최근검색/즐겨찾기 저장
     private fun saveHistory(list: List<SearchHistoryItem>, isFavorite: Boolean) {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        val key = if (isFavorite) KEY_FAVORITE else KEY_RECENT
-        val set = list.map { "${it.keyword}||${it.date}" }.toSet()
-        Log.d("SearchHistory", "Saving history for key: $key, size: ${set.size}")
-        prefs.edit().putStringSet(key, set).apply()
+        val prefs = getSharedPreferences("search_history", MODE_PRIVATE).edit()
+        val gson = Gson()
+        
+        val key = if (isFavorite) {
+            val userId = getUserId()
+            if (userId != -1L) {
+                "favorite_history_$userId" // User-specific key
+            } else {
+                Log.w("History", "Cannot save favorites without a logged-in user.")
+                return // Do not save if user is not logged in
+            }
+        } else {
+            "recent_history"
+        }
+        
+        val json = gson.toJson(list)
+        prefs.putString(key, json)
+        prefs.apply()
     }
 
     // 최근검색 추가
@@ -834,7 +932,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val list = loadHistory(false).toMutableList()
         list.removeAll { it.keyword == keyword }
         list.add(0, SearchHistoryItem(keyword, date, false))
-        if (list.size > 20) list.removeLast() // 최대 20개
+        if (list.size > 20) list.removeAt(list.lastIndex) // 최대 20개
         saveHistory(list, false)
         Log.d("SearchHistory", "Current recent history size: ${list.size}")
     }
@@ -848,19 +946,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
             favList.add(0, item.copy(isFavorite = true))
         }
         saveHistory(favList, true)
-        updateFullTabUI() // 즐겨찾기 변경 후 UI 갱신 추가
+        updateFullSearchUI() // 즐겨찾기 변경 후 UI 갱신 추가
     }
 
     // UI 갱신 함수
-    private fun updateFullTabUI() {
-        Log.d("SearchHistory", "Updating UI, isFavoriteTab: $isFavoriteTab")
-        fullTabRecent.setBackgroundColor(if (!isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
-        fullTabFavorite.setBackgroundColor(if (isFavoriteTab) 0xFFFF5252.toInt() else 0x00000000)
-        val currentList = loadHistory(isFavoriteTab)
-        Log.d("SearchHistory", "Current list size: ${currentList.size}")
-        fullAdapter.updateList(currentList)
-    }
-
     private fun updateFullSearchUI() {
         // 탭 상태 업데이트
         fullTabRecent.isSelected = !isFavoriteTab
@@ -868,13 +957,14 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         val favoriteKeywords = loadHistory(true).map { it.keyword }.toSet()
         val currentHistory = loadHistory(isFavoriteTab)
-        
+        val isLoggedInNow = isLoggedIn()
         if (::fullAdapter.isInitialized) {
-            (fullHistoryRecyclerView.adapter as SearchHistoryAdapter).updateList(currentHistory, favoriteKeywords)
+            (fullHistoryRecyclerView.adapter as SearchHistoryAdapter).updateList(currentHistory, favoriteKeywords, isLoggedInNow)
         } else {
-             fullAdapter = SearchHistoryAdapter(
+            fullAdapter = SearchHistoryAdapter(
                 historyList = currentHistory,
                 favoriteKeywords = favoriteKeywords,
+                isLoggedIn = isLoggedInNow,
                 onItemClick = { item ->
                     Log.d("SearchHistory", "Item clicked: ${item.keyword}")
                     fullSearchEditText.setText(item.keyword)
@@ -885,7 +975,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                     val currentList = loadHistory(isFavoriteTab).toMutableList()
                     currentList.removeAll { it.keyword == item.keyword }
                     saveHistory(currentList, isFavoriteTab)
-                    
                     if (!isFavoriteTab) {
                         val favoriteList = loadHistory(true).toMutableList()
                         favoriteList.removeAll { it.keyword == item.keyword }
@@ -896,7 +985,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                 onFavoriteClick = { item ->
                     val favoriteList = loadHistory(true).toMutableList()
                     val isCurrentlyFavorite = favoriteList.any { it.keyword == item.keyword }
-
                     if (isCurrentlyFavorite) {
                         favoriteList.removeAll { it.keyword == item.keyword }
                     } else {
@@ -904,6 +992,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                     }
                     saveHistory(favoriteList, true)
                     updateFullSearchUI()
+                },
+                onLoginRequired = {
+                    startActivity(Intent(this, LoginActivity::class.java))
                 }
             )
             fullHistoryRecyclerView.adapter = fullAdapter
@@ -916,19 +1007,21 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private fun fetchParkingLotsFromBackend() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = RetrofitClient.apiService.getAllParkingLots()
+                val response = RetrofitClient.getApiService(this@MainActivity).getAllParkingLots()
                 if (response.isSuccessful) {
-                    val parkingLots = response.body()
-                    parkingLots?.let { lots ->
+                    val lots = response.body()
+                    if (!lots.isNullOrEmpty()) {
+                        this@MainActivity.parkingLotList = lots
                         withContext(Dispatchers.Main) {
-                            displayBackendParkingLots(lots)
+                            addMarkersToMap(lots)
                         }
                     }
                 } else {
-                    Log.e("API", "주차장 데이터 가져오기 실패: ${response.code()}")
+                    Toast.makeText(applicationContext, "주차장 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Log.e("API", "주차장 데이터 가져오기 오류", e)
+                Log.e("MainActivity", "Error loading parking lot data", e)
+                Toast.makeText(applicationContext, "네트워크 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -975,7 +1068,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     private fun registerParkingLotToBackend(parkingLot: ParkingLotRequest) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val response = RetrofitClient.apiService.registerParkingLot(parkingLot)
+                val response = RetrofitClient.getApiService(this@MainActivity).registerParkingLot(parkingLot)
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Toast.makeText(this@MainActivity, "주차장 등록 완료!", Toast.LENGTH_SHORT).show()
@@ -999,7 +1092,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = UserLoginRequest(email, password)
-                val response = RetrofitClient.apiService.loginUser(request)
+                val response = RetrofitClient.getApiService(this@MainActivity).loginUser(request)
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Toast.makeText(this@MainActivity, "로그인 성공!", Toast.LENGTH_SHORT).show()
@@ -1022,7 +1115,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = UserRegisterRequest(username, email, password)
-                val response = RetrofitClient.apiService.registerUser(request)
+                val response = RetrofitClient.getApiService(this@MainActivity).registerUser(request)
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         val userResponse = response.body()
@@ -1049,11 +1142,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = FavoriteRequest(userId, parkingLotId)
-                val response = RetrofitClient.apiService.addFavorite(request)
+                val response = RetrofitClient.getApiService(this@MainActivity).addFavorite(request)
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Toast.makeText(this@MainActivity, "즐겨찾기 추가 완료!", Toast.LENGTH_SHORT).show()
                     } else {
+                        Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 추가 실패, code=${response.code()}, error=${response.errorBody()?.string()}")
                         Toast.makeText(this@MainActivity, "즐겨찾기 추가 실패", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -1094,35 +1188,47 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
     }
 
     private fun handleFavoriteClick(parkingLot: ParkingLotResponse, isCurrentlyFavorite: Boolean) {
+        Log.d("FavoriteTest", "handleFavoriteClick 진입: parkingLotId=${parkingLot.id}, isCurrentlyFavorite=$isCurrentlyFavorite")
         if (!isLoggedIn()) {
+            Log.d("FavoriteTest", "handleFavoriteClick: 로그인 필요")
             Toast.makeText(this, "로그인이 필요한 기능입니다.", Toast.LENGTH_SHORT).show()
             startActivity(Intent(this, LoginActivity::class.java))
             return
         }
 
         val userId = getUserId() // SharedPreferences에서 userId 가져오기
+        Log.d("FavoriteTest", "handleFavoriteClick: userId=$userId")
         if (userId == -1L) return
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val request = FavoriteRequest(userId, parkingLot.id)
                 if (isCurrentlyFavorite) {
-                    // 즐겨찾기 삭제
-                    val response = RetrofitClient.apiService.removeFavorite(request)
+                    Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 삭제 시도")
+                    val response = RetrofitClient.getApiService(this@MainActivity).removeFavorite(request)
                     if (response.isSuccessful) {
                         favoriteParkingLotIds.remove(parkingLot.id)
+                        Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 삭제 성공")
                         Toast.makeText(this@MainActivity, "즐겨찾기에서 삭제했습니다.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 삭제 실패")
+                        Toast.makeText(this@MainActivity, "즐겨찾기 삭제 실패", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    // 즐겨찾기 추가
-                    val response = RetrofitClient.apiService.addFavorite(request)
+                    Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 추가 시도")
+                    val response = RetrofitClient.getApiService(this@MainActivity).addFavorite(request)
                     if (response.isSuccessful) {
                         favoriteParkingLotIds.add(parkingLot.id)
+                        Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 추가 성공")
                         Toast.makeText(this@MainActivity, "즐겨찾기에 추가했습니다.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("FavoriteTest", "handleFavoriteClick: 즐겨찾기 추가 실패, code=${response.code()}, error=${response.errorBody()?.string()}")
+                        Toast.makeText(this@MainActivity, "즐겨찾기 추가 실패", Toast.LENGTH_SHORT).show()
                     }
                 }
                 parkingLotResultAdapter.notifyDataSetChanged() // 아이콘 업데이트
             } catch (e: Exception) {
+                Log.e("FavoriteTest", "handleFavoriteClick: 예외 발생", e)
                 Toast.makeText(this@MainActivity, "오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
             }
         }
@@ -1132,37 +1238,111 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         val userId = getUserId()
         if (userId == -1L) return
 
-        CoroutineScope(Dispatchers.Main).launch {
+        lifecycleScope.launch {
             try {
-                val response = RetrofitClient.apiService.getFavorites(userId)
+                val response = RetrofitClient.getApiService(this@MainActivity).getFavorites(userId)
                 if (response.isSuccessful) {
-                    val favorites = response.body()
-                    favorites?.let {
-                        favoriteParkingLotIds.clear()
-                        favoriteParkingLotIds.addAll(it.map { fav -> fav.parkingLot.id })
-                        parkingLotResultAdapter.notifyDataSetChanged()
+                    val newFavoriteIds = response.body()?.map { it.parkingLot.id }?.toSet() ?: emptySet<Long>()
+                    
+                    withContext(Dispatchers.Main) {
+                        if (newFavoriteIds != favoriteParkingLotIds) {
+                            favoriteParkingLotIds.clear()
+                            favoriteParkingLotIds.addAll(newFavoriteIds)
+                            if (::mMap.isInitialized) addMarkersToMap(parkingLotList)
+                            if (::parkingLotResultAdapter.isInitialized) parkingLotResultAdapter.updateFavorites(favoriteParkingLotIds)
+                        }
                     }
                 }
             } catch (e: Exception) {
-                Log.e("MainActivity", "Failed to fetch favorites", e)
+                Log.e("FetchFavorites", "Failed to fetch favorites", e)
             }
         }
     }
 
     private fun getUserId(): Long {
         val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-        return prefs.getLong("user_id", -1L) // 로그인 시 user_id도 저장해야 함
+        return prefs.getLong("user_id", -1L) // -1 or some other invalid value
     }
 
+    // onResume: 화면이 다시 활성화될 때마다 호출
     override fun onResume() {
         super.onResume()
         updateSideMenuUserInfo()
         updateLoginButtonUI()
-        if(isLoggedIn()) {
+        if (isLoggedIn()) {
             fetchFavorites()
         } else {
             favoriteParkingLotIds.clear()
-            parkingLotResultAdapter.notifyDataSetChanged()
+            if (::mMap.isInitialized) addMarkersToMap(this.parkingLotList)
+            if (::parkingLotResultAdapter.isInitialized) parkingLotResultAdapter.updateFavorites(emptySet<Long>())
+        }
+        if(::fullAdapter.isInitialized) {
+             updateFullSearchUI()
+        }
+    }
+
+    // onResume, handleLoginButtonClick 등에서 이 함수를 호출
+    private fun addMarkersToMap(parkingLots: List<ParkingLotResponse>) {
+        if (!::mMap.isInitialized) return
+        mMap.clear()
+
+        parkingLots.forEach { parkingLot ->
+            val markerLocation = LatLng(parkingLot.latitude, parkingLot.longitude)
+            val isFavorite = favoriteParkingLotIds.contains(parkingLot.id)
+
+            val markerView = LayoutInflater.from(this).inflate(R.layout.marker_layout, null)
+            val tvParkingName = markerView.findViewById<TextView>(R.id.marker_text)
+            val ivMarkerBackground = markerView.findViewById<ImageView>(R.id.marker_background)
+
+            tvParkingName.text = parkingLot.name
+            ivMarkerBackground.setImageResource(if (isFavorite) R.drawable.marker_bg_yellow else R.drawable.marker_bg_green)
+
+            val markerOptions = MarkerOptions()
+                .position(markerLocation)
+                .icon(BitmapDescriptorFactory.fromBitmap(createBitmapFromView(markerView)))
+                .anchor(0.5f, 1.0f)
+
+            mMap.addMarker(markerOptions)?.tag = parkingLot
+        }
+    }
+
+    // View를 Bitmap으로 변환하는 헬퍼 함수
+    private fun createBitmapFromView(view: View): Bitmap {
+        view.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val bitmap = Bitmap.createBitmap(view.measuredWidth, view.measuredHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+        view.draw(canvas)
+        return bitmap
+    }
+
+    // 언어 변경 함수
+    private fun setLocale(language: String) {
+        val locale = java.util.Locale(language)
+        java.util.Locale.setDefault(locale)
+        val config = resources.configuration
+        config.setLocale(locale)
+        resources.updateConfiguration(config, resources.displayMetrics)
+        // 선택 언어 저장
+        getSharedPreferences("settings", MODE_PRIVATE).edit().putString("lang", language).apply()
+        // 앱 재시작
+        val intent = intent
+        finish()
+        startActivity(intent)
+    }
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        val prefs = newBase?.getSharedPreferences("settings", MODE_PRIVATE)
+        val lang = prefs?.getString("lang", null)
+        if (lang != null) {
+            val locale = java.util.Locale(lang)
+            java.util.Locale.setDefault(locale)
+            val config = newBase.resources.configuration
+            config.setLocale(locale)
+            val context = newBase.createConfigurationContext(config)
+            super.attachBaseContext(context)
+        } else {
+            super.attachBaseContext(newBase)
         }
     }
 }

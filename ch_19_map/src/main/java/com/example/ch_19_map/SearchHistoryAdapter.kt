@@ -9,10 +9,12 @@ import androidx.recyclerview.widget.RecyclerView
 
 class SearchHistoryAdapter(
     private var historyList: List<SearchHistoryItem>,
-    private val favoriteKeywords: Set<String>,
+    private var favoriteKeywords: Set<String>,
+    private var isLoggedIn: Boolean,
     private val onItemClick: (SearchHistoryItem) -> Unit,
     private val onDeleteClick: (SearchHistoryItem) -> Unit,
-    private val onFavoriteClick: (SearchHistoryItem) -> Unit
+    private val onFavoriteClick: (SearchHistoryItem) -> Unit,
+    private val onLoginRequired: () -> Unit
 ) : RecyclerView.Adapter<SearchHistoryAdapter.ViewHolder>() {
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -25,7 +27,7 @@ class SearchHistoryAdapter(
             keywordTextView.text = item.keyword
             dateTextView.text = item.date
             
-            if (favoriteKeywords.contains(item.keyword)) {
+            if (isLoggedIn && favoriteKeywords.contains(item.keyword)) {
                 favoriteButton.setImageResource(R.drawable.ic_favorite)
             } else {
                 favoriteButton.setImageResource(R.drawable.ic_favorite_border)
@@ -33,7 +35,13 @@ class SearchHistoryAdapter(
 
             itemView.setOnClickListener { onItemClick(item) }
             deleteButton.setOnClickListener { onDeleteClick(item) }
-            favoriteButton.setOnClickListener { onFavoriteClick(item) }
+            favoriteButton.setOnClickListener {
+                if (isLoggedIn) {
+                    onFavoriteClick(item)
+                } else {
+                    onLoginRequired()
+                }
+            }
         }
     }
 
@@ -54,10 +62,10 @@ class SearchHistoryAdapter(
         notifyDataSetChanged()
     }
     
-    fun updateList(newItems: List<SearchHistoryItem>, newFavorites: Set<String>) {
+    fun updateList(newItems: List<SearchHistoryItem>, newFavorites: Set<String>, newIsLoggedIn: Boolean) {
         historyList = newItems
-        (this.favoriteKeywords as MutableSet).clear()
-        (this.favoriteKeywords as MutableSet).addAll(newFavorites)
+        favoriteKeywords = newFavorites
+        isLoggedIn = newIsLoggedIn
         notifyDataSetChanged()
     }
 } 

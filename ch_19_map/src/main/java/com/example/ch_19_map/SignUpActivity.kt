@@ -64,7 +64,7 @@ class SignUpActivity : AppCompatActivity() {
 
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
-                            val response = RetrofitClient.apiService.registerUser(request)
+                            val response = RetrofitClient.getApiService(this@SignUpActivity).registerUser(request)
                             withContext(Dispatchers.Main) {
                                 if (response.isSuccessful && response.body()?.success == true) {
                                     Toast.makeText(this@SignUpActivity, "회원가입이 완료되었습니다.", Toast.LENGTH_SHORT).show()

@@ -8,7 +8,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class ParkingLotResultAdapter(
-    private val favoriteParkingLotIds: Set<Long>,
+    private var favoriteParkingLotIds: Set<Long>,
     private val onItemClick: (ParkingLotResponse) -> Unit,
     private val onFavoriteClick: (parkingLot: ParkingLotResponse, isCurrentlyFavorite: Boolean) -> Unit
 ) : RecyclerView.Adapter<ParkingLotResultAdapter.ViewHolder>() {
@@ -17,6 +17,11 @@ class ParkingLotResultAdapter(
 
     fun updateResults(newResults: List<ParkingLotResponse>) {
         results = newResults
+        notifyDataSetChanged()
+    }
+
+    fun updateFavorites(newFavoriteIds: Set<Long>) {
+        this.favoriteParkingLotIds = newFavoriteIds
         notifyDataSetChanged()
     }
 
@@ -52,7 +57,10 @@ class ParkingLotResultAdapter(
             val favoriteIcon = if (isFavorite) R.drawable.ic_favorite else R.drawable.ic_favorite_border
             favoriteButton.setImageResource(favoriteIcon)
 
-            favoriteButton.setOnClickListener { onFavoriteClick(parkingLot, isFavorite) }
+            favoriteButton.setOnClickListener {
+                android.util.Log.d("FavoriteTest", "Adapter: 하트 클릭됨 - parkingLotId=${parkingLot.id}, isFavorite=$isFavorite")
+                onFavoriteClick(parkingLot, isFavorite)
+            }
         }
     }
 } 

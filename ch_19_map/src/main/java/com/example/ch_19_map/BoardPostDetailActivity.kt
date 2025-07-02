@@ -39,7 +39,7 @@ class BoardPostDetailActivity : AppCompatActivity() {
             tvAuthor.text = "작성자: ${it.author.username}"
             tvCreatedAt.text = "작성일: ${it.createdAt}"
             // 이미지 표시
-            val baseUrl = "http://192.168.219.46:8090" // 에뮬레이터 기준, 실기기는 PC의 IP로 변경
+            val baseUrl = "http://10.0.2.2:8090" // 에뮬레이터 기준, 실기기는 PC의 IP로 변경
             val imageUrl = it.fileUrls?.firstOrNull()
             if (!imageUrl.isNullOrBlank()) {
                 ivImage.visibility = View.VISIBLE

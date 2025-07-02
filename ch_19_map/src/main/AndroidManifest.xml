@@ -22,13 +22,16 @@
             android:value="@integer/google_play_services_version"/>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"/>
         <activity android:name=".ParkingDetailActivity" android:exported="false"/>
         <activity android:name=".LoginActivity" android:exported="false"/>
         <activity android:name=".SignUpActivity"

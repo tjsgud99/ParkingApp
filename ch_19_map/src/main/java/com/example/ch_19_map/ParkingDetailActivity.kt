@@ -211,7 +211,7 @@ class ParkingDetailActivity : AppCompatActivity() {
         val mediaController = android.widget.MediaController(this)
         mediaController.setAnchorView(videoView)
         videoView.setMediaController(mediaController)
-        val cctvUrl = "http://192.168.219.46:8090/uploads/CCTV01.mp4"
+        val cctvUrl = "http://10.0.2.2:8090/uploads/CCTV01.mp4"
         videoView.setVideoURI(Uri.parse(cctvUrl))
         videoView.setOnPreparedListener { mp ->
             mp.isLooping = true // 반복재생

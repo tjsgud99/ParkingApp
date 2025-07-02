@@ -12,7 +12,7 @@ import android.preference.PreferenceManager
 object RetrofitClient {
     
     // 백엔드 서버 URL (로컬 테스트용)
-    private const val BASE_URL = "http://192.168.219.46:8090/"
+    private const val BASE_URL = "http://10.0.2.2:8090/"
     
     // OkHttpClient 설정 (토큰 자동 헤더 추가)
     private fun getOkHttpClient(context: Context): OkHttpClient {

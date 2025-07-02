@@ -1,4 +1,4 @@
-package com.example.complete
+package com.example.ch_19_map
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge

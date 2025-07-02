@@ -575,7 +575,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
 
         CoroutineScope(Dispatchers.IO).launch {
             val allItems = mutableListOf<ParkingItem>()
-            val totalPages = 5
+            val totalPages = 1
             val numOfRaw = 200
             try {
                 // 주차장 시설 정보 가져오기
@@ -797,12 +797,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
         mMap = googleMap
         this.googleMap = googleMap
         googleMap?.setInfoWindowAdapter(this)
-
         googleMap?.setOnMarkerClickListener { marker ->
             marker.showInfoWindow()
             true
         }
-
         googleMap?.setOnInfoWindowClickListener { marker ->
             val parkingDetail = parkingDataMap[marker.id]
             parkingDetail?.let {
@@ -813,18 +811,20 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                 startActivity(intent)
             }
         }
-
-        // 앱 시작 시 서울 좌표로 카메라 이동
         val seoul = LatLng(37.5665, 126.9780)
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(seoul, 15f))
-
-        // 캐시된 마커 먼저 표시
-        val cachedMarkers = loadMarkersFromPrefs()
-        if (cachedMarkers.isNotEmpty()) {
-            addMarkersToMap(cachedMarkers)
+        // parkingLotList가 비어있지 않으면 항상 마커 추가
+        if (parkingLotList.isNotEmpty()) {
+            addMarkersToMap(parkingLotList)
+        } else {
+            // 캐시된 마커 먼저 표시
+            val cachedMarkers = loadMarkersFromPrefs()
+            if (cachedMarkers.isNotEmpty()) {
+                addMarkersToMap(cachedMarkers)
+            }
+            // 최신 데이터로 갱신
+            fetchAndShowParkingMarkers()
         }
-        // 최신 데이터로 갱신
-        fetchAndShowParkingMarkers()
     }
 
     private fun formatOperatingTime(startTime: String?, endTime: String?): String {
@@ -1479,5 +1479,22 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.InfoWind
                 dialog.dismiss()
             }
             .show()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // 마커 데이터 저장
+        val json = Gson().toJson(parkingLotList)
+        outState.putString("parking_lot_list_json", json)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        // 마커 데이터 복원
+        val json = savedInstanceState.getString("parking_lot_list_json", null)
+        if (json != null) {
+            val type = object : com.google.gson.reflect.TypeToken<List<ParkingLotResponse>>() {}.type
+            parkingLotList = Gson().fromJson(json, type)
+        }
     }
 }

@@ -7,10 +7,10 @@
       </SelectionState>
       <SelectionState runConfigName="ch_19_map">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2025-06-27T00:58:13.597815Z">
+        <DropdownSelection timestamp="2025-07-01T06:29:03.093000600Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=R54RC01HZTK" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\smhrd\.android\avd\Pixel_6.avd" />
             </handle>
           </Target>
         </DropdownSelection>

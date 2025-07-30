@@ -1,6 +1,7 @@
 ## ✨ ParQ (파큐): AI 기반 스마트 주차 정보 시스템
 
-*대표 기능이나 프로젝트 전체를 보여주는 대표 이미지를 이곳에 삽입하세요.*
+<img width="346" height="765" alt="image" src="https://github.com/user-attachments/assets/483564f4-10ed-469f-9cb4-621112449933" />
+
 
 ---
 
